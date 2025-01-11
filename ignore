@@ -1,0 +1,1 @@
+docker run -v "C:/Users/zakmo/Desktop/app:/app" -v "C:/Users/zakmo/AppData/Local/Android/Sdk:/root/.android-sdk" -it my-kivy-app bash -c "cd /app && yes | buildozer -v android debug"
