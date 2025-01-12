@@ -1,5 +1,7 @@
 import os
 import ast
+import pkg_resources
+import subprocess
 from kivy.app import App
 from kivy.uix.button import Button
 from kivy.uix.textinput import TextInput
@@ -148,6 +150,29 @@ class PythonUploadScreen(Screen):
 
         self.add_widget(self.inner_layout)
 
+    def verify_dependency(self, dependency):
+        """
+        Verifies if a dependency exists in the current environment.
+        If not found, checks its PyPI name using pip search (requires internet).
+        """
+        try:
+            # Check if the package exists in the current environment
+            pkg_resources.get_distribution(dependency)
+            return dependency  # Already installed
+        except pkg_resources.DistributionNotFound:
+            # Not installed, try to find it via PyPI
+            result = subprocess.run(
+                ["pip", "search", dependency],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+            if result.returncode == 0 and dependency in result.stdout:
+                return dependency  # Assume the PyPI name matches
+            else:
+                print(f"Could not verify dependency: {dependency}")
+                return None  # Mark as unresolved
+    
     def scan_dependencies(self, instance):
         # Clear previous dependency results
         self.dependency_label.text = 'Scanning...'
@@ -157,37 +182,24 @@ class PythonUploadScreen(Screen):
         if not file_path:
             self.dependency_label.text = "No file selected!"
             return
-
+    
         # Read the file and analyze it for dependencies
         dependencies = self.get_dependencies(file_path[0])
-
+        verified_dependencies = []
+    
+        # Verify each dependency
+        for dep in dependencies:
+            verified = self.verify_dependency(dep)
+            if verified:
+                verified_dependencies.append(verified)
+    
         # Update the label with the list of dependencies
-        if dependencies:
-            self.dependency_label.text = "Detected Dependencies:\n" + "\n".join(dependencies)
-            self.update_buildozer_spec(dependencies)
-            self.update_dockerfile(dependencies)
+        if verified_dependencies:
+            self.dependency_label.text = "Detected and Verified Dependencies:\n" + "\n".join(verified_dependencies)
+            self.update_buildozer_spec(verified_dependencies)
+            self.update_dockerfile(verified_dependencies)
         else:
-            self.dependency_label.text = "No dependencies found."
-
-    def get_dependencies(self, file_path):
-        dependencies = set()  # Use a set to avoid duplicates
-        
-        try:
-            with open(file_path, 'r') as f:
-                tree = ast.parse(f.read(), filename=file_path)
-
-            for node in ast.walk(tree):
-                if isinstance(node, ast.Import):
-                    for alias in node.names:
-                        dependencies.add(alias.name)
-                elif isinstance(node, ast.ImportFrom):
-                    dependencies.add(node.module)
-
-        except Exception as e:
-            print(f"Error reading file: {e}")
-            return []
-
-        return list(dependencies)
+            self.dependency_label.text = "No valid dependencies found."
 
     def update_buildozer_spec(self, dependencies):
         try:
