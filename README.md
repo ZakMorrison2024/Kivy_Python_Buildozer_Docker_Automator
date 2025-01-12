@@ -10,8 +10,11 @@ This app automates the creation of `Dockerfile` and `buildozer.spec` files. It a
 Please note that this app is currently a **work in progress** and some parts of the app do not yet work as expected.
 However, it should work, is undergoing tests.
 
-
 ## Features:
+- Easy to Read GUI
+- File Selection
+- Configures Buildozer and Dockerfiles
+- Reads Dependancies and back checks them
 
 ## Installation
 1. Clone or download this repository.
